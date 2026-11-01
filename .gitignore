@@ -1,0 +1,6 @@
+.env
+.venv/
+__pycache__/
+*.pyc
+file_index/
+sample_documents/
