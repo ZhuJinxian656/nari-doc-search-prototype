@@ -6,48 +6,48 @@ from camel.agents import ChatAgent
 from camel.messages import BaseMessage
 from camel.typing import ModelType, TaskType
 
-# 1. �� .env �ļ����ػ�������
-# ȷ�����д������������� CAMEL �����ʹ��֮ǰ
+# 1. 从 .env 文件加载环境变量
+# 确保这行代码在所有其他 CAMEL 导入和使用之前
 load_dotenv()
 
 def main():
     """
-    ���������������ú����� CAMEL AI Agent Э������
+    主函数，用于设置和运行 CAMEL AI Agent 协作任务。
     """
-    print("��ӭ���� CAMEL AI Э�����磡")
+    print("欢迎来到 CAMEL AI 协作世界！")
     print("-" * 30)
     
-    # 2. ��������ͽ�ɫ
-    # ������һ���ƻ�С˵�Һ�һ������ѧ�ң���ͬ��˼һ�����ڡ�ʱ�����С��Ķ�ƪ���´�١�
-    task_prompt = "��˼һ������ʱ�����еĶ�ƪ���´�٣�Ҫ����д��⣬�ַ��ϻ���������ѧԭ����"
+    # 2. 定义任务和角色
+    # 我们让一个科幻小说家和一个物理学家，共同构思一个关于“时间旅行”的短篇故事大纲。
+    task_prompt = "构思一个关于时间旅行的短篇故事大纲，要求既有创意，又符合基本的物理学原理。"
     
-    # ��ȡģ�����ƣ������������û�����ã���ʹ��Ĭ��ֵ
-    # �������Ǵ� .env �ļ��м����ˣ����Ի�ʹ�� "Qwen2-72B-Instruct"
+    # 获取模型名称，如果环境变量没有设置，则使用默认值
+    # 这里我们从 .env 文件中加载了，所以会使用 "Qwen2-72B-Instruct"
     model_name = os.getenv("OPENAI_API_MODEL")
     if not model_name:
-        raise ValueError("�������� OPENAI_API_MODEL δ���ã�������� .env �ļ���")
+        raise ValueError("环境变量 OPENAI_API_MODEL 未设置，请检查你的 .env 文件。")
         
-    print(f"ʹ�õ�ģ��: {model_name}")
-    print(f"����: {task_prompt}")
+    print(f"使用的模型: {model_name}")
+    print(f"任务: {task_prompt}")
     print("-" * 30)
 
-    # 3. ���� Agent
-    # AI ���� Agent (���ݿƻ�С˵��)
+    # 3. 创建 Agent
+    # AI 助手 Agent (扮演科幻小说家)
     assistant_sys_msg = BaseMessage.make_assistant_message(
-        role_name="�ƻ�С˵��",
-        content="���ó����������������Ŀƻù��£��ر��ǹ���δ���Ƽ���ʱ�մ������ڡ�",
+        role_name="科幻小说家",
+        content="我擅长创作富有想象力的科幻故事，特别是关于未来科技和时空穿梭的情节。",
     )
     assistant_agent = ChatAgent(
         system_message=assistant_sys_msg,
-        model=ModelType.OPENAI, # ע�⣺��ʹ�Ǳ���ģ�ͣ�ֻҪ�ӿڼ��ݣ�������� ModelType.OPENAI
-        model_config=dict(model=model_name), # ��ȷָ��ģ������
-        task_prompt=task_prompt, # �� Agent ֪����������
+        model=ModelType.OPENAI, # 注意：即使是本地模型，只要接口兼容，这里就用 ModelType.OPENAI
+        model_config=dict(model=model_name), # 明确指定模型名称
+        task_prompt=task_prompt, # 让 Agent 知道总体任务
     )
 
-    # AI �û� Agent (��������ѧ��)
+    # AI 用户 Agent (扮演物理学家)
     user_sys_msg = BaseMessage.make_user_message(
-        role_name="����ѧ��",
-        content="��רע�������������ر�������ۺ�������ѧ���һ�ȷ�������еĿ�ѧ�������Ͻ��ͺ����ġ�",
+        role_name="物理学家",
+        content="我专注于理论物理，特别是相对论和量子力学。我会确保故事中的科学概念是严谨和合理的。",
     )
     user_agent = ChatAgent(
         system_message=user_sys_msg,
@@ -56,27 +56,27 @@ def main():
         task_prompt=task_prompt,
     )
     
-    # 4. ���� Agent��׼����ʼ�Ի�
+    # 4. 重置 Agent，准备开始对话
     assistant_agent.reset()
     user_agent.reset()
 
-    # 5. ��ʼ���ֶԻ� (Role-Playing)
-    # �����ȿ�ʼ����������뷨
+    # 5. 开始多轮对话 (Role-Playing)
+    # 助手先开始，提出初步想法
     assistant_msg = assistant_agent.step(user_agent.system_message)
-    print(f"��{assistant_agent.role_name}��: {assistant_msg.content}\n")
+    print(f"【{assistant_agent.role_name}】: {assistant_msg.content}\n")
 
-    # ���ƶԻ��ִΣ���������ѭ��
-    for _ in range(5): # ����5�ֶԻ�
-        # �û�������ѧ�ң��������ֵ��뷨���л�Ӧ������
+    # 限制对话轮次，避免无限循环
+    for _ in range(5): # 进行5轮对话
+        # 用户（物理学家）根据助手的想法进行回应和修正
         user_msg = user_agent.step(assistant_msg)
-        print(f"��{user_agent.role_name}��: {user_msg.content}\n")
+        print(f"【{user_agent.role_name}】: {user_msg.content}\n")
         
-        # ���֣�С˵�ң��ٸ����û��ķ������д���
+        # 助手（小说家）再根据用户的反馈进行创作
         assistant_msg = assistant_agent.step(user_msg)
-        print(f"��{assistant_agent.role_name}��: {assistant_msg.content}\n")
+        print(f"【{assistant_agent.role_name}】: {assistant_msg.content}\n")
 
     print("-" * 30)
-    print("������ɣ�")
+    print("任务完成！")
 
 if __name__ == "__main__":
     main()

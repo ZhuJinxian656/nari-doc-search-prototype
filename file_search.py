@@ -25,7 +25,7 @@ class WhooshFileSearcher:
         self.ix = self.create_or_open_index()
     
     def create_or_open_index(self):
-        """�����������"""
+        """创建或打开索引"""
         if not os.path.exists(self.index_dir):
             os.makedirs(self.index_dir)
         
@@ -35,7 +35,7 @@ class WhooshFileSearcher:
             return index.create_in(self.index_dir, self.schema)
     
     def extract_text_from_file(self, file_path):
-        """�Ӳ�ͬ�����ļ���ȡ�ı�"""
+        """从不同类型文件提取文本"""
         ext = Path(file_path).suffix.lower()
         
         try:
@@ -48,11 +48,11 @@ class WhooshFileSearcher:
             else:
                 return ""
         except Exception as e:
-            print(f"��ȡ�ı�ʧ�� {file_path}: {e}")
+            print(f"提取文本失败 {file_path}: {e}")
             return ""
     
     def extract_pdf_text(self, file_path):
-        """��ȡPDF�ı�"""
+        """提取PDF文本"""
         try:
             doc = fitz.open(file_path)
             text = ""
@@ -61,20 +61,20 @@ class WhooshFileSearcher:
             doc.close()
             return text
         except Exception as e:
-            print(f"PDF��ȡʧ�� {file_path}: {e}")
+            print(f"PDF提取失败 {file_path}: {e}")
             return ""
     
     def extract_docx_text(self, file_path):
-        """��ȡWord�ĵ��ı�"""
+        """提取Word文档文本"""
         try:
             doc = Document(file_path)
             return "\n".join([paragraph.text for paragraph in doc.paragraphs])
         except Exception as e:
-            print(f"DOCX��ȡʧ�� {file_path}: {e}")
+            print(f"DOCX提取失败 {file_path}: {e}")
             return ""
     
     def extract_text_file(self, file_path):
-        """��ȡ���ı��ļ�"""
+        """提取纯文本文件"""
         encodings = ['utf-8', 'gbk', 'gb2312', 'latin1', 'cp1252']
         for encoding in encodings:
             try:
@@ -85,7 +85,7 @@ class WhooshFileSearcher:
         return ""
     
     def index_directory(self, directory_path, update_existing=True):
-        """��������Ŀ¼"""
+        """索引整个目录"""
         directory_path = Path(directory_path)
         writer = self.ix.writer()
         
@@ -96,7 +96,7 @@ class WhooshFileSearcher:
             for file_path in directory_path.rglob('*'):
                 if file_path.is_file() and not self.should_skip_file(file_path):
                     try:
-                        # ����ļ��Ƿ��Ѵ�����δ�޸�
+                        # 检查文件是否已存在且未修改
                         if not update_existing and self.is_file_indexed(str(file_path)):
                             skipped_count += 1
                             continue
@@ -115,14 +115,14 @@ class WhooshFileSearcher:
                         
                         indexed_count += 1
                         if indexed_count % 100 == 0:
-                            print(f"������ {indexed_count} ���ļ�...")
+                            print(f"已索引 {indexed_count} 个文件...")
                         
                     except Exception as e:
-                        print(f"����ʧ�� {file_path}: {e}")
+                        print(f"索引失败 {file_path}: {e}")
                         skipped_count += 1
             
             writer.commit()
-            print(f"�������: {indexed_count} ���ļ�������, {skipped_count} ���ļ�����")
+            print(f"索引完成: {indexed_count} 个文件已索引, {skipped_count} 个文件跳过")
             
         except Exception as e:
             writer.cancel()
@@ -131,43 +131,43 @@ class WhooshFileSearcher:
         return {"indexed": indexed_count, "skipped": skipped_count}
     
     def should_skip_file(self, file_path):
-        """�ж��Ƿ������ļ�"""
+        """判断是否跳过文件"""
         skip_dirs = {'__pycache__', '.git', 'node_modules', '.DS_Store', 
                     '.vscode', '.idea', 'build', 'dist', 'target'}
         skip_extensions = {'.exe', '.dll', '.so', '.dylib', '.bin', '.iso', 
                           '.img', '.dmg', '.zip', '.rar', '.7z'}
         
-        # �����ض�Ŀ¼
+        # 跳过特定目录
         if any(part in skip_dirs for part in file_path.parts):
             return True
         
-        # �����ض���չ��
+        # 跳过特定扩展名
         if file_path.suffix.lower() in skip_extensions:
             return True
         
-        # �������ļ� (����50MB)
+        # 跳过大文件 (超过50MB)
         try:
             if file_path.stat().st_size > 50 * 1024 * 1024:
                 return True
         except:
             return True
         
-        # ���������ļ�
+        # 跳过隐藏文件
         if file_path.name.startswith('.'):
             return True
         
         return False
     
     def is_file_indexed(self, filepath):
-        """����ļ��Ƿ��ѱ�����"""
+        """检查文件是否已被索引"""
         with self.ix.searcher() as searcher:
             results = searcher.documents(filepath=filepath)
             return len(list(results)) > 0
     
     def search(self, query_text, max_results=100):
-        """�����ļ�"""
+        """搜索文件"""
         with self.ix.searcher() as searcher:
-            # �������ֶβ�ѯ������
+            # 创建多字段查询解析器
             query_parser = MultifieldParser(
                 ["filename", "content"], 
                 schema=self.ix.schema
@@ -175,13 +175,13 @@ class WhooshFileSearcher:
             
             query = query_parser.parse(query_text)
             
-            # ִ������
+            # 执行搜索
             results = searcher.search(query, limit=max_results)
             
-            # ��ʽ�����
+            # 格式化结果
             formatted_results = []
             for result in results:
-                # ��ȡ����Ƭ��
+                # 获取高亮片段
                 highlights = {}
                 if result['content']:
                     highlights['content'] = result.highlights('content', top=3)
@@ -204,11 +204,11 @@ class WhooshFileSearcher:
             }
     
     def get_index_stats(self):
-        """��ȡ����ͳ����Ϣ"""
+        """获取索引统计信息"""
         with self.ix.searcher() as searcher:
             doc_count = searcher.doc_count()
             
-            # ���ļ�����ͳ��
+            # 按文件类型统计
             file_types = {}
             for doc in searcher.documents():
                 file_type = doc.get('file_type', 'unknown')
@@ -221,7 +221,7 @@ class WhooshFileSearcher:
             }
     
     def get_index_size(self):
-        """��ȡ������С"""
+        """获取索引大小"""
         total_size = 0
         for root, dirs, files in os.walk(self.index_dir):
             for file in files:
@@ -229,30 +229,30 @@ class WhooshFileSearcher:
         return total_size
     
     def clear_index(self):
-        """�������"""
+        """清空索引"""
         writer = self.ix.writer()
         writer.commit(mergetype=CLEAR)
 
-# Flask APIӦ��
+# Flask API应用
 app = Flask(__name__)
 searcher = WhooshFileSearcher()
 
 @app.route('/search', methods=['POST'])
 def search_files():
-    """�����ļ�API"""
+    """搜索文件API"""
     try:
         data = request.get_json()
         if not data:
-            return jsonify({'error': '���ṩJSON����'}), 400
+            return jsonify({'error': '请提供JSON数据'}), 400
         
         query = data.get('query', '').strip()
         max_results = data.get('max_results', 100)
         
         if not query:
-            return jsonify({'error': '��ѯ���ݲ���Ϊ��'}), 400
+            return jsonify({'error': '查询内容不能为空'}), 400
         
         if len(query) > 100:
-            return jsonify({'error': '��ѯ���ݹ���'}), 400
+            return jsonify({'error': '查询内容过长'}), 400
         
         start_time = datetime.now()
         results = searcher.search(query, max_results)
@@ -268,28 +268,28 @@ def search_files():
     except Exception as e:
         return jsonify({
             'success': False,
-            'error': f'����ʧ��: {str(e)}'
+            'error': f'搜索失败: {str(e)}'
         }), 500
 
 @app.route('/index', methods=['POST'])
 def index_directory():
-    """����Ŀ¼API"""
+    """索引目录API"""
     try:
         data = request.get_json()
         if not data:
-            return jsonify({'error': '���ṩJSON����'}), 400
+            return jsonify({'error': '请提供JSON数据'}), 400
         
         directory = data.get('directory', '').strip()
         update_existing = data.get('update_existing', True)
         
         if not directory:
-            return jsonify({'error': 'Ŀ¼·������Ϊ��'}), 400
+            return jsonify({'error': '目录路径不能为空'}), 400
         
         if not os.path.exists(directory):
-            return jsonify({'error': 'Ŀ¼������'}), 400
+            return jsonify({'error': '目录不存在'}), 400
         
         if not os.path.isdir(directory):
-            return jsonify({'error': '·������Ŀ¼'}), 400
+            return jsonify({'error': '路径不是目录'}), 400
         
         start_time = datetime.now()
         stats = searcher.index_directory(directory, update_existing)
@@ -305,12 +305,12 @@ def index_directory():
     except Exception as e:
         return jsonify({
             'success': False,
-            'error': f'����ʧ��: {str(e)}'
+            'error': f'索引失败: {str(e)}'
         }), 500
 
 @app.route('/stats', methods=['GET'])
 def get_stats():
-    """��ȡ����ͳ����Ϣ"""
+    """获取索引统计信息"""
     try:
         stats = searcher.get_index_stats()
         return jsonify({
@@ -320,39 +320,39 @@ def get_stats():
     except Exception as e:
         return jsonify({
             'success': False,
-            'error': f'��ȡͳ��ʧ��: {str(e)}'
+            'error': f'获取统计失败: {str(e)}'
         }), 500
 
 @app.route('/clear', methods=['POST'])
 def clear_index():
-    """�������"""
+    """清空索引"""
     try:
         searcher.clear_index()
         return jsonify({
             'success': True,
-            'message': '���������'
+            'message': '索引已清空'
         })
     except Exception as e:
         return jsonify({
             'success': False,
-            'error': f'���ʧ��: {str(e)}'
+            'error': f'清空失败: {str(e)}'
         }), 500
 
 @app.route('/health', methods=['GET'])
 def health_check():
-    """�������"""
+    """健康检查"""
     return jsonify({
         'status': 'healthy',
         'timestamp': datetime.now().isoformat()
     })
 
 if __name__ == '__main__':
-    print("�ļ�����ϵͳ������...")
-    print("API�˵�:")
-    print("  POST /search - �����ļ�")
-    print("  POST /index - ����Ŀ¼")
-    print("  GET /stats - ��ȡͳ����Ϣ")
-    print("  POST /clear - �������")
-    print("  GET /health - �������")
+    print("文件搜索系统启动中...")
+    print("API端点:")
+    print("  POST /search - 搜索文件")
+    print("  POST /index - 索引目录")
+    print("  GET /stats - 获取统计信息")
+    print("  POST /clear - 清空索引")
+    print("  GET /health - 健康检查")
     
     app.run(host='127.0.0.1', port=5000, debug=False)
